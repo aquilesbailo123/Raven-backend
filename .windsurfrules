@@ -8,7 +8,7 @@
   - Use descriptive variable and function names; adhere to naming conventions (e.g., lowercase with underscores for functions and variables).
   - Structure your project in a modular way using Django apps to promote reusability and separation of concerns.
 
-  Django/Python
+  Django/Python 
   - Use Django’s class-based views (CBVs) for more complex views; prefer function-based views (FBVs) for simpler logic.
   - Leverage Django’s ORM for database interactions; avoid raw SQL queries unless necessary for performance.
   - Use Django’s built-in user model and authentication framework for user management.

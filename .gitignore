@@ -43,6 +43,7 @@ ENV/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.template
 
 # IDE specific files #
 .idea/
@@ -66,3 +67,7 @@ coverage.xml
 # Extra files
 save_to_self_and_delete_*.txt
 *.json
+
+#Agents
+.windsurfrules
+CLAUDE.md
