@@ -15,7 +15,7 @@ django-admin-tools==0.9.3
 django-admin-rangefilter==0.13.3
 pyotp==2.9.0
 
-# JWT Auth
+# JWT Auth 
 djangorestframework_simplejwt==5.5.1
 PyJWT==2.10.1
 
