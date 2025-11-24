@@ -3,20 +3,18 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
 from django_otp.admin import OTPAdminSite
-from django.views.generic import TemplateView
 
+from core.views import AuthenticatedLandingView
 from users.urls import urlpatterns as users_urlpatterns
 
-admin.site.__class__ = OTPAdminSite
+# Solo habilitar OTP si está configurado
+if settings.ENABLE_OTP_ADMIN:
+    admin.site.__class__ = OTPAdminSite
 # admin.autodiscover()
 # admin.site.enable_nav_sidebar = False
 
-# No longer needed
-# class NullView(View):
-#     pass
-
 urlpatterns = [
-    path('', TemplateView.as_view(template_name='landing.html'), name='landing'),
+    path('', AuthenticatedLandingView.as_view(), name='landing'),
     path('admin/', admin.site.urls),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

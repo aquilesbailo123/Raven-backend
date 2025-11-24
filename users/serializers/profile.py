@@ -11,10 +11,12 @@ class UserProfileSerializer(ModelSerializer):
         model = Profile
         fields = (
             'user',
+            'user_type',
             'actions_freezed_till',
         )
         read_only_fields = (
             'user',
+            'user_type',
             'actions_freezed_till',
         )
 

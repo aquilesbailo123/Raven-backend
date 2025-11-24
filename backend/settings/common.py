@@ -32,7 +32,7 @@ ALLOWED_HOSTS = [env('DOMAIN', default='localhost')]
 if DEBUG or IS_TEST:
     ALLOWED_HOSTS += ['localhost', '127.0.0.1']
 
-ENABLE_OTP_ADMIN = True
+ENABLE_OTP_ADMIN = False  # Deshabilitado temporalmente para desarrollo
 ADMIN_USER = env('ADMIN_USER', default='admin@admin.com')
 ADMIN_MASTERPASS = env('ADMIN_MASTERPASS', default='1234')
 
@@ -171,6 +171,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+# Django Sites Framework
+SITE_ID = 1
 
 # Optional: Configure OTP settings
 # OTP_TOTP_ISSUER = 'Test'

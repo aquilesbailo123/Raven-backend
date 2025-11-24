@@ -9,7 +9,23 @@ User = get_user_model()
 
 class Profile(BaseModel):
     """User profile with additional information and security settings"""
+
+    # User type choices
+    STARTUP = 'startup'
+    INCUBATOR = 'incubator'
+
+    USER_TYPE_CHOICES = [
+        (STARTUP, 'Startup'),
+        (INCUBATOR, 'Incubator'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user_type = models.CharField(
+        max_length=20,
+        choices=USER_TYPE_CHOICES,
+        default=STARTUP,
+        help_text="Type of user account"
+    )
 
     # Security settings
     actions_freezed_till = models.DateTimeField(null=True, blank=True)

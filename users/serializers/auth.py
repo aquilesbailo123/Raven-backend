@@ -49,9 +49,10 @@ class UserSerializer(UserDetailsSerializer):
     It must be used only in settings.REST_AUTH.USER_DETAILS_SERIALIZER
     """
     actions_freezed_till = serializers.DateTimeField(source='profile.actions_freezed_till', read_only=True)
+    user_type = serializers.CharField(source='profile.user_type', read_only=True)
 
     class Meta(UserDetailsSerializer.Meta):
-        fields = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'actions_freezed_till')
+        fields = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'actions_freezed_till', 'user_type')
         extra_kwargs = {'pk': {'read_only': False, 'required': False}}
 
     def create(self, *args, **kwargs):
@@ -213,6 +214,11 @@ class RegisterSerializer(BaseRegisterSerializer):
     """
     email = serializers.EmailField(required=True)
     username = serializers.CharField(required=False)
+    user_type = serializers.ChoiceField(
+        choices=Profile.USER_TYPE_CHOICES,
+        required=True,
+        help_text="Type of user account: 'startup' or 'incubator'"
+    )
 
     captchaResponse = serializers.CharField(required=settings.CAPTCHA_ENABLED, allow_blank=True)
     first_name = serializers.CharField(required=False)
@@ -250,13 +256,14 @@ class RegisterSerializer(BaseRegisterSerializer):
         # Check if Site configuration exists
         request = self._context['request']
         email = data.get('email').lower()
+
         captcher = CaptchaProcessor(
             email,
             None,
             data.get('captchaResponse'),
             skip_extra_checks=True,
         )
-        captcher.check()                     
+        captcher.check()
 
         data['email'] = email
         data = super(RegisterSerializer, self).validate(data)
@@ -268,13 +275,15 @@ class RegisterSerializer(BaseRegisterSerializer):
             'last_name': self.validated_data.get('last_name', ''),
             'username': self.validated_data.get('username', ''),
             'password1': self.validated_data.get('password1', ''),
-            'email': self.validated_data.get('email', '')
+            'email': self.validated_data.get('email', ''),
+            'user_type': self.validated_data.get('user_type', Profile.STARTUP)
         }
 
     def save(self, request):
         request._request.lang = self.validated_data.get('lang', 'en')
         self.validated_data['username'] = generate_cool_username()
-        
+        user_type = self.validated_data.get('user_type', Profile.STARTUP)
+
         with atomic():
             # Double-check site configuration before saving
             try:
@@ -287,12 +296,13 @@ class RegisterSerializer(BaseRegisterSerializer):
                     'message': _('Registration is currently unavailable. Please try again later.'),
                     'type': 'site_config_missing'
                 })
-                
+
             user = super().save(request)
             profile: Profile = user.profile
+            profile.user_type = user_type
             # profile.register_ip = next(iter(get_client_ip(request) or []), None)
             profile.save()
-            logger.info(f"User created with email {user.email} and username '{user.username}'")
+            logger.info(f"User created with email {user.email}, username '{user.username}', and user_type '{user_type}'")
 
         RegisterUserCheck.update_last_emails()
         # Return user but no tokens will be generated for inactive users
