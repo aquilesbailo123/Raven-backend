@@ -7,9 +7,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",  # Vite default port
     "http://127.0.0.1:5173",
-    f"http://{env('FRONTEND_DOMAIN', default='localhost:3000')}",
-    "https://kuskapay.com",
-    "https://www.kuskapay.com",
+    f"https://{env('FRONTEND_DOMAIN', default='localhost:3000')}",
     f"https://{env('DOMAIN', default='localhost')}",
 ]
 
