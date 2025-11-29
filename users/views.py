@@ -9,13 +9,15 @@ from django.utils.translation import gettext_lazy as _, activate as translation_
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.request import Request
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.core.cache import cache
 from allauth.account.models import EmailAddress
 from django.db.models import Model
 from django.contrib.auth import get_user_model
 
 from users.cache_keys import RESEND_VERIFICATION_TOKEN_CACHE_KEY
+from users.models import Startup, Profile
+from users.serializers.startup import StartupOnboardingSerializer, StartupSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +102,79 @@ class ResendEmailConfirmationView(APIView):
 
 class PasswordResetConfirmView(TemplateView):
     template_name = 'accounts/password_reset_confirm.html'
-    
+
     def get(self, request, *args, **kwargs):
         # Make the token and uid available to the template
         context = self.get_context_data(**kwargs)
         context['token'] = kwargs.get('token')
         context['uid'] = kwargs.get('uidb64')
         return self.render_to_response(context)
+
+
+class StartupOnboardingView(APIView):
+    """
+    API endpoint for startup onboarding.
+    Allows authenticated startup users to complete their onboarding by providing company_name and industry.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request):
+        """Get current startup information and onboarding status"""
+        try:
+            profile = request.user.profile
+
+            # Check if user is a startup
+            if profile.user_type != Profile.STARTUP:
+                return Response(
+                    {'detail': _('This endpoint is only for startup users.')},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Get or create startup
+            startup, created = Startup.objects.get_or_create(profile=profile)
+
+            serializer = StartupSerializer(startup)
+            return Response({
+                'startup': serializer.data,
+                'is_onboarding_complete': startup.is_onboarding_complete()
+            }, status=status.HTTP_200_OK)
+
+        except Profile.DoesNotExist:
+            return Response(
+                {'detail': _('Profile not found.')},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def post(self, request: Request):
+        """Complete startup onboarding by providing company_name and industry"""
+        try:
+            profile = request.user.profile
+
+            # Check if user is a startup
+            if profile.user_type != Profile.STARTUP:
+                return Response(
+                    {'detail': _('This endpoint is only for startup users.')},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Get or create startup
+            startup, created = Startup.objects.get_or_create(profile=profile)
+
+            # Validate and update data
+            serializer = StartupOnboardingSerializer(startup, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            # Return full startup data
+            full_serializer = StartupSerializer(startup)
+            return Response({
+                'detail': _('Onboarding completed successfully.'),
+                'startup': full_serializer.data,
+                'is_onboarding_complete': startup.is_onboarding_complete()
+            }, status=status.HTTP_200_OK)
+
+        except Profile.DoesNotExist:
+            return Response(
+                {'detail': _('Profile not found.')},
+                status=status.HTTP_404_NOT_FOUND
+            )

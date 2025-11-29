@@ -48,16 +48,72 @@ class Profile(BaseModel):
             return False
         return timezone.now() < self.actions_freezed_till
 
+class Startup(BaseModel):
+    """Startup company information linked to a user profile"""
+
+    # Industry choices
+    TECHNOLOGY = 'technology'
+    FINTECH = 'fintech'
+    HEALTHTECH = 'healthtech'
+    EDTECH = 'edtech'
+    ECOMMERCE = 'ecommerce'
+    SAAS = 'saas'
+    AI_ML = 'ai_ml'
+    BLOCKCHAIN = 'blockchain'
+    MARKETPLACE = 'marketplace'
+    OTHER = 'other'
+
+    INDUSTRY_CHOICES = [
+        (TECHNOLOGY, 'Technology'),
+        (FINTECH, 'FinTech'),
+        (HEALTHTECH, 'HealthTech'),
+        (EDTECH, 'EdTech'),
+        (ECOMMERCE, 'E-commerce'),
+        (SAAS, 'SaaS'),
+        (AI_ML, 'AI/ML'),
+        (BLOCKCHAIN, 'Blockchain'),
+        (MARKETPLACE, 'Marketplace'),
+        (OTHER, 'Other'),
+    ]
+
+    profile = models.OneToOneField(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name='startup',
+        limit_choices_to={'user_type': Profile.STARTUP}
+    )
+    company_name = models.CharField(max_length=255, blank=True, null=True)
+    industry = models.CharField(
+        max_length=50,
+        choices=INDUSTRY_CHOICES,
+        blank=True,
+        null=True
+    )
+    logo_url = models.URLField(blank=True, null=True, help_text="URL to company logo in GCS")
+    is_mock_data = models.BooleanField(default=True, help_text="Indicates if this is mock/sample data")
+
+    class Meta:
+        verbose_name = 'Startup'
+        verbose_name_plural = 'Startups'
+
+    def __str__(self):
+        return f"{self.company_name or 'Unnamed Startup'} - {self.profile.user.email}"
+
+    def is_onboarding_complete(self):
+        """Check if the startup has completed the onboarding process"""
+        return bool(self.company_name and self.industry)
+
+
 class LoginHistory(UserMixinModel):
     """Tracks user login attempts with IP and user agent information"""
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
     timestamp = models.DateTimeField(default=timezone.now)
-    
+
     class Meta:
         verbose_name = 'Login history'
         verbose_name_plural = 'Login histories'
         ordering = ['-timestamp']
-    
+
     def __str__(self):
         return f"{self.user.email} - {self.ip} - {self.timestamp}"

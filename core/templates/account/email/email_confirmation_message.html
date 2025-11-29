@@ -1,38 +1,90 @@
-{% extends 'base_layout.html' %}
-{% block content %}
 {% load account %}{% user_display user as user_display %}{% load i18n %}
 {% autoescape off %}
 {% blocktrans with site_name=current_site.name site_domain=current_site.domain %}
-<div style="background: linear-gradient(to right, #1a1a1a, #1a1a1a) !important; background-color: #1a1a1a !important; padding: 20px; border-radius: 8px;">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación de Correo | Raven CRM</title>
+</head>
+<body style="margin: 0; padding: 0; background: linear-gradient(to right, #1e1e1e, #1e1e1e) !important; background-color: #1e1e1e !important; color: #e0e0e0; font-family: Arial, sans-serif; font-size: 16px;">
 
-    <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 16px; font-weight: normal; margin: 0; margin-bottom: 15px; color: #ebeaea !important;">
-        ¡Empecemos 
-        <a href="" style="text-decoration: none !important; color: #007aff !important; display: inline-block;">{{ user_display }}</a>!
-    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(to right, #1e1e1e, #1e1e1e) !important; background-color: #1e1e1e !important; border-spacing: 0; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
 
-    <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 16px; font-weight: normal; margin: 0; margin-bottom: 15px; color: #ebeaea !important;">
-        Bienvenido a <strong style="color: #667eea !important; font-weight: bold;">Test</strong>,
-    </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; border-spacing: 0; border-collapse: collapse;">
+                    <tr>
+                        <td align="center">
 
-    <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 16px; font-weight: normal; margin: 0; margin-bottom: 15px; color: #ebeaea !important;">
-        Usa el siguiente código para iniciar tu aventura con nosotros:
-    </p>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(to right, #2b2b2b, #2b2b2b) !important; background-color: #2b2b2b !important; color: #e0e0e0; padding: 40px; border-radius: 8px;">
+                                <tr>
+                                    <td align="center" style="padding: 0 0 10px 0;">
+                                        <p style="text-align: center; margin: 0 0 5px 0;">
+                                            <span style="font-size: 30px; color: #8A2BE2 !important;">🚀</span>
+                                        </p>
+                                        <p style="color: #ffffff !important; font-size: 26px; font-weight: 600; text-align: center; margin: 0;">
+                                            Raven CRM
+                                        </p>
+                                    </td>
+                                </tr>
 
-    <div style="text-align: center; margin: 20px 0; padding: 15px; background: linear-gradient(to right, #333333, #333333) !important; background-color: #333333 !important; border-radius: 8px;">
-        <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 24px; font-weight: bold; color: #667eea !important;">{{ key }}</span>
-    </div>
+                                <tr>
+                                    <td align="center" style="padding: 0;">
+                                        <table role="presentation" width="90%" cellpadding="0" cellspacing="0" border="0" style="border-spacing: 0; border-collapse: collapse;">
+                                            <tr>
+                                                <td width="40%" height="2" style="background: linear-gradient(to right, #4B0082, #4B0082) !important; background-color: #4B0082 !important; padding: 0;"></td>
+                                                <td width="60%" height="2" style="background: linear-gradient(to right, #8A2BE2, #8A2BE2) !important; background-color: #8A2BE2 !important; padding: 0;"></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
 
-    <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 15px; color: #a0a0a0 !important;">
-        Recuerda:
-    </p>
+                                <tr>
+                                    <td style="padding: 30px 0 10px 0;">
+                                        <p style="font-size: 18px; margin: 0; color: #ffffff !important; text-align: center;">
+                                            ¡Bienvenido a <strong style="color: #ffffff !important;">Raven CRM</strong>!
+                                        </p>
+                                        <p style="margin: 20px 0 0 0; font-size: 16px; color: #e0e0e0 !important; text-align: center;">
+                                            Usa el siguiente código para verificar tu correo:
+                                        </p>
+                                    </td>
+                                </tr>
 
-    <ul style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 15px; padding-left: 20px; color: #a0a0a0 !important;">
-        <li>Este código será válido por 10 minutos</li>
-        <li>Evita compartirla con nadie</li>
-        <li>Haz clic y selecciona el código para copiarlo manualmente</li>
-    </ul>
+                                <tr>
+                                    <td align="center" style="padding: 25px 0;">
+                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 250px; margin: 0 auto;">
+                                            <tr>
+                                                <td style="background: linear-gradient(to right, #3d3d3d, #3d3d3d) !important; background-color: #3d3d3d !important; color: #5E72E4 !important; font-size: 36px; font-weight: bold; padding: 20px 30px; border-radius: 6px; text-align: center; letter-spacing: 4px;">
+{% endblocktrans %}{{ key }}{% blocktrans with site_name=current_site.name site_domain=current_site.domain %}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
 
-</div>
+                                <tr>
+                                    <td style="font-size: 14px; color: #aaaaaa !important; padding-top: 10px;">
+                                        <p style="margin: 0 0 5px 0; font-weight: bold; color: #aaaaaa !important;">Recordatorio Importante:</p>
+                                        <ul style="margin: 10px 0 0 0; padding-left: 20px; list-style: disc; color: #aaaaaa !important;">
+                                            <li style="margin-bottom: 5px; color: #aaaaaa !important;">Este código expira en <strong style="color: #aaaaaa !important;">10 minutos</strong> por seguridad.</li>
+                                            <li style="margin-bottom: 5px; color: #aaaaaa !important;">Si no solicitaste esta acción, ignora este correo.</li>
+                                            <li style="color: #aaaaaa !important;">Para mayor seguridad, te recomendamos no compartir este código.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="color: #aaaaaa !important; font-size: 12px; text-align: center; padding: 20px 0;">
+                                © 2025 Raven CRM. Todos los derechos reservados.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
 {% endblocktrans %}
 {% endautoescape %}
-{% endblock %}

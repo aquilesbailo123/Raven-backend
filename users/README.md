@@ -47,6 +47,14 @@ users/
 ### Models
 
 - **Profile**: Extends the User model with additional fields and security methods
+  - `user_type`: User type ('startup' or 'incubator')
+  - `actions_freezed_till`: Security feature for freezing user actions
+- **Startup**: Company information for startup users
+  - `profile`: OneToOne relationship with Profile (user_type must be 'startup')
+  - `company_name`: Company name
+  - `industry`: Industry classification
+  - `logo_url`: URL to company logo in Google Cloud Storage
+  - `is_mock_data`: Indicates if this is sample/mock data
 - **LoginHistory**: Records login attempts with context information
 
 ### Authentication Flow
@@ -115,6 +123,13 @@ The user type is stored in the `Profile` model and must be specified during regi
 |-----|--------|-------------|---------------|
 | `/reset-password/<uidb64>/<token>/` | GET | Password reset view | No |
 
+### Onboarding
+
+| URL | Method | Description | Auth Required |
+|-----|--------|-------------|---------------|
+| `/onboarding/startup/` | GET | Get startup information and onboarding status | Yes (startup only) |
+| `/onboarding/startup/` | POST | Complete startup onboarding | Yes (startup only) |
+
 ## API Request/Response Examples
 
 ### POST `/auth/registration/` - Register
@@ -170,6 +185,8 @@ The user type is stored in the `Profile` model and must be specified during regi
     "last_name": "Doe",
     "is_staff": false,
     "user_type": "startup",
+    "onboarding_complete": false,
+    "company_name": null,
     "actions_freezed_till": null
   }
 }
@@ -195,7 +212,83 @@ Authorization: Bearer <access_token>
   "last_name": "Doe",
   "is_staff": false,
   "user_type": "startup",
+  "onboarding_complete": false,
+  "company_name": null,
   "actions_freezed_till": null
+}
+```
+
+### POST `/onboarding/startup/` - Complete Startup Onboarding
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "company_name": "My Startup Inc.",
+  "industry": "saas"
+}
+```
+
+**Required Fields:**
+- `company_name`: Company name (string)
+- `industry`: Industry type (string) - Valid options: `technology`, `fintech`, `healthtech`, `edtech`, `ecommerce`, `saas`, `ai_ml`, `blockchain`, `marketplace`, `other`
+
+**Response (200 OK):**
+```json
+{
+  "detail": "Onboarding completed successfully.",
+  "startup": {
+    "id": 1,
+    "company_name": "My Startup Inc.",
+    "industry": "saas",
+    "logo_url": null,
+    "is_mock_data": true,
+    "created": "2025-11-29T12:00:00Z",
+    "updated": "2025-11-29T12:00:00Z"
+  },
+  "is_onboarding_complete": true
+}
+```
+
+**Error Response (403 Forbidden - Not a startup user):**
+```json
+{
+  "detail": "This endpoint is only for startup users."
+}
+```
+
+**Error Response (400 Bad Request - Validation error):**
+```json
+{
+  "company_name": ["Company name cannot be empty"],
+  "industry": ["Industry must be selected"]
+}
+```
+
+### GET `/onboarding/startup/` - Get Startup Onboarding Status
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "startup": {
+    "id": 1,
+    "company_name": "My Startup Inc.",
+    "industry": "saas",
+    "logo_url": null,
+    "is_mock_data": true,
+    "created": "2025-11-29T12:00:00Z",
+    "updated": "2025-11-29T12:00:00Z"
+  },
+  "is_onboarding_complete": true
 }
 ```
 

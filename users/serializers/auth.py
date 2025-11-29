@@ -50,10 +50,34 @@ class UserSerializer(UserDetailsSerializer):
     """
     actions_freezed_till = serializers.DateTimeField(source='profile.actions_freezed_till', read_only=True)
     user_type = serializers.CharField(source='profile.user_type', read_only=True)
+    onboarding_complete = serializers.SerializerMethodField()
+    company_name = serializers.SerializerMethodField()
 
     class Meta(UserDetailsSerializer.Meta):
-        fields = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'actions_freezed_till', 'user_type')
+        fields = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'actions_freezed_till', 'user_type', 'onboarding_complete', 'company_name')
         extra_kwargs = {'pk': {'read_only': False, 'required': False}}
+
+    def get_onboarding_complete(self, obj):
+        """Check if startup onboarding is complete (only for startup users)"""
+        try:
+            if obj.profile.user_type == 'startup':
+                from users.models import Startup
+                startup = Startup.objects.filter(profile=obj.profile).first()
+                return startup.is_onboarding_complete() if startup else False
+            return True  # Non-startup users don't need onboarding
+        except:
+            return True
+
+    def get_company_name(self, obj):
+        """Get company name for startup users"""
+        try:
+            if obj.profile.user_type == 'startup':
+                from users.models import Startup
+                startup = Startup.objects.filter(profile=obj.profile).first()
+                return startup.company_name if startup else None
+            return None
+        except:
+            return None
 
     def create(self, *args, **kwargs):
         raise MethodNotAllowed('create')
