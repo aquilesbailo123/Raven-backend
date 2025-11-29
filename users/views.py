@@ -16,8 +16,14 @@ from django.db.models import Model
 from django.contrib.auth import get_user_model
 
 from users.cache_keys import RESEND_VERIFICATION_TOKEN_CACHE_KEY
-from users.models import Startup, Profile
+from users.models import Startup, Profile, Evidence, FinancialInput, InvestorPipeline
 from users.serializers.startup import StartupOnboardingSerializer, StartupSerializer
+from users.serializers.onboarding import (
+    OnboardingWizardSerializer,
+    EvidenceSerializer,
+    FinancialInputSerializer,
+    InvestorPipelineSerializer
+)
 
 logger = logging.getLogger(__name__)
 
@@ -177,4 +183,255 @@ class StartupOnboardingView(APIView):
             return Response(
                 {'detail': _('Profile not found.')},
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class OnboardingCompleteView(APIView):
+    """
+    API endpoint for completing the full onboarding wizard (Phase 2).
+
+    This endpoint replaces all mock data with real data from the startup.
+    It handles a single POST request containing:
+    - TRL/CRL evidence
+    - Financial projections
+    - Investor pipeline
+
+    After successful completion, the startup's is_mock_data flag is set to False.
+
+    **Authentication Required**: Yes
+    **User Type**: Startup only
+
+    **POST Body Structure**:
+    ```json
+    {
+        "current_trl": 3,
+        "target_funding_amount": 150000.00,
+        "evidences": [
+            {
+                "trl_level": 3,
+                "description": "Proof of concept completed",
+                "file_url": "https://storage.example.com/evidence.pdf"
+            }
+        ],
+        "financial_data": [
+            {
+                "period_date": "2024-01-31",
+                "revenue": 5000.00,
+                "costs": 8000.00,
+                "cash_balance": 45000.00,
+                "monthly_burn": 3000.00
+            }
+        ],
+        "investors": [
+            {
+                "investor_name": "Angel Investor 1",
+                "investor_email": "investor@example.com",
+                "stage": "CONTACTED",
+                "ticket_size": 50000.00
+            }
+        ]
+    }
+    ```
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request):
+        """
+        Complete the onboarding wizard by:
+        1. Validating all nested data
+        2. Deleting existing mock data
+        3. Creating real data from the wizard
+        4. Updating startup.is_mock_data to False
+        """
+        try:
+            profile = request.user.profile
+
+            # Security check: Only startup users can access this endpoint
+            if profile.user_type != Profile.STARTUP:
+                logger.warning(
+                    f"Non-startup user {request.user.email} attempted to access onboarding wizard"
+                )
+                return Response(
+                    {'detail': _('This endpoint is only for startup users.')},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Get or create startup instance
+            startup, created = Startup.objects.get_or_create(profile=profile)
+
+            # Log the onboarding attempt
+            logger.info(
+                f"Onboarding wizard started for startup: {startup.company_name or 'Unnamed'} "
+                f"(ID: {startup.id}, User: {request.user.email})"
+            )
+
+            # Validate and process the complete wizard data
+            serializer = OnboardingWizardSerializer(
+                data=request.data,
+                context={'startup': startup, 'request': request}
+            )
+
+            # Validate all nested data
+            serializer.is_valid(raise_exception=True)
+
+            # Create all data (this also deletes mock data and updates startup)
+            result = serializer.save()
+
+            # Log successful completion
+            logger.info(
+                f"Onboarding wizard completed successfully for startup: "
+                f"{startup.company_name} (ID: {startup.id}). "
+                f"Created: {len(result['evidences'])} evidences, "
+                f"{len(result['financial_data'])} financial periods, "
+                f"{len(result['investors'])} investors"
+            )
+
+            # Return success response with serialized data
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+        except Profile.DoesNotExist:
+            logger.error(f"Profile not found for user: {request.user.email}")
+            return Response(
+                {'detail': _('Profile not found.')},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            # Log unexpected errors
+            logger.error(
+                f"Unexpected error in onboarding wizard for user {request.user.email}: {str(e)}",
+                exc_info=True
+            )
+            return Response(
+                {'detail': _('An error occurred while processing your onboarding data.')},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class StartupDataView(APIView):
+    """
+    Get startup data for authenticated startup users.
+    Returns company info, TRL, and basic stats.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request):
+        try:
+            profile = request.user.profile
+            if profile.user_type != Profile.STARTUP:
+                return Response(
+                    {'detail': _('This endpoint is only for startup users.')},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            startup = Startup.objects.filter(profile=profile).first()
+            if not startup:
+                return Response(
+                    {'detail': _('Startup not found.')},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            serializer = StartupSerializer(startup)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error fetching startup data for {request.user.email}: {str(e)}", exc_info=True)
+            return Response(
+                {'detail': _('An error occurred while fetching startup data.')},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class EvidenceListView(APIView):
+    """
+    Get all evidences for the authenticated startup user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request):
+        try:
+            profile = request.user.profile
+            if profile.user_type != Profile.STARTUP:
+                return Response(
+                    {'detail': _('This endpoint is only for startup users.')},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            startup = Startup.objects.filter(profile=profile).first()
+            if not startup:
+                return Response([], status=status.HTTP_200_OK)
+
+            evidences = Evidence.objects.filter(startup=startup).order_by('-created')
+            serializer = EvidenceSerializer(evidences, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error fetching evidences for {request.user.email}: {str(e)}", exc_info=True)
+            return Response(
+                {'detail': _('An error occurred while fetching evidences.')},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class FinancialDataListView(APIView):
+    """
+    Get all financial data for the authenticated startup user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request):
+        try:
+            profile = request.user.profile
+            if profile.user_type != Profile.STARTUP:
+                return Response(
+                    {'detail': _('This endpoint is only for startup users.')},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            startup = Startup.objects.filter(profile=profile).first()
+            if not startup:
+                return Response([], status=status.HTTP_200_OK)
+
+            financial_data = FinancialInput.objects.filter(startup=startup).order_by('-period_date')
+            serializer = FinancialInputSerializer(financial_data, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error fetching financial data for {request.user.email}: {str(e)}", exc_info=True)
+            return Response(
+                {'detail': _('An error occurred while fetching financial data.')},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class InvestorPipelineListView(APIView):
+    """
+    Get all investors in the pipeline for the authenticated startup user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request):
+        try:
+            profile = request.user.profile
+            if profile.user_type != Profile.STARTUP:
+                return Response(
+                    {'detail': _('This endpoint is only for startup users.')},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            startup = Startup.objects.filter(profile=profile).first()
+            if not startup:
+                return Response([], status=status.HTTP_200_OK)
+
+            investors = InvestorPipeline.objects.filter(startup=startup).order_by('-created')
+            serializer = InvestorPipelineSerializer(investors, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error fetching investor pipeline for {request.user.email}: {str(e)}", exc_info=True)
+            return Response(
+                {'detail': _('An error occurred while fetching investor pipeline.')},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

@@ -58,15 +58,24 @@ class UserSerializer(UserDetailsSerializer):
         extra_kwargs = {'pk': {'read_only': False, 'required': False}}
 
     def get_onboarding_complete(self, obj):
-        """Check if startup onboarding is complete (only for startup users)"""
+        """
+        Check if startup onboarding is complete.
+        SIMPLE LOGIC: Only True if user completed the wizard.
+        Default is always False until they submit the onboarding form.
+        """
         try:
             if obj.profile.user_type == 'startup':
                 from users.models import Startup
                 startup = Startup.objects.filter(profile=obj.profile).first()
-                return startup.is_onboarding_complete() if startup else False
-            return True  # Non-startup users don't need onboarding
-        except:
+                if not startup:
+                    return False
+                # ONLY check the onboarding_completed field, nothing else
+                return startup.onboarding_completed
+            # Non-startup users don't need onboarding
             return True
+        except Exception as e:
+            logger.error(f"Error checking onboarding status for user {obj.email}: {e}")
+            return False
 
     def get_company_name(self, obj):
         """Get company name for startup users"""
@@ -326,6 +335,19 @@ class RegisterSerializer(BaseRegisterSerializer):
             profile.user_type = user_type
             # profile.register_ip = next(iter(get_client_ip(request) or []), None)
             profile.save()
+
+            # Create empty Startup object for startup users
+            if user_type == Profile.STARTUP:
+                from users.models import Startup
+                Startup.objects.create(
+                    profile=profile,
+                    company_name='',  # Will be filled in onboarding wizard
+                    industry='',  # Will be filled in onboarding wizard
+                    is_mock_data=False,  # No mock data for real users
+                    onboarding_completed=False  # Must complete wizard
+                )
+                logger.info(f"Created empty Startup record for user {user.email}")
+
             logger.info(f"User created with email {user.email}, username '{user.username}', and user_type '{user_type}'")
 
         RegisterUserCheck.update_last_emails()
