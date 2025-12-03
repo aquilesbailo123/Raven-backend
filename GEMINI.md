@@ -338,3 +338,6 @@ Brief description of what this app does.
 - Review and update documentation during code reviews
 - Test documented URLs to ensure accuracy
 - Include examples for complex or non-obvious URL patterns
+
+### MODEL.ml
+- Whatever change in model, views or serializers, update the model.ml file
