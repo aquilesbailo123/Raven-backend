@@ -41,18 +41,18 @@ class StartupAdmin(admin.ModelAdmin):
 
 @admin.register(Evidence)
 class EvidenceAdmin(admin.ModelAdmin):
-    list_display = ('startup', 'trl_level', 'status', 'description_preview', 'created')
-    list_filter = ('status', 'trl_level', 'created')
+    list_display = ('startup', 'type', 'level', 'status', 'description_preview', 'created')
+    list_filter = ('status', 'type', 'level', 'created')
     search_fields = ('startup__company_name', 'description')
     readonly_fields = ('created', 'updated')
     ordering = ('-created',)
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('startup', 'trl_level', 'description')
+            'fields': ('startup', 'type', 'level', 'description')
         }),
         ('File Information', {
-            'fields': ('file', 'file_url')
+            'fields': ('file_url',)
         }),
         ('Review', {
             'fields': ('status', 'reviewer_notes')

@@ -60,7 +60,7 @@ class Startup(BaseModel):
     SAAS = 'saas'
     AI_ML = 'ai_ml'
     BLOCKCHAIN = 'blockchain'
-    MARKETPLACE = 'marketplace'
+    MARKETPLACE = 'Marketplace'
     OTHER = 'other'
 
     INDUSTRY_CHOICES = [
@@ -147,24 +147,35 @@ class Evidence(BaseModel):
         (REJECTED, 'Rejected'),
     ]
 
+    # Evidence type choices
+    TRL = 'TRL'
+    CRL = 'CRL'
+    EVIDENCE_TYPE_CHOICES = [
+        (TRL, 'Technology Readiness Level'),
+        (CRL, 'Commercial Readiness Level'),
+    ]
+
     startup = models.ForeignKey(
         Startup,
         on_delete=models.CASCADE,
         related_name='evidences',
         help_text="Startup that owns this evidence"
     )
-    trl_level = models.IntegerField(
-        help_text="Technology Readiness Level (1-9)",
-        choices=[(i, f'TRL {i}') for i in range(1, 10)]
+    type = models.CharField(
+        max_length=10,
+        choices=EVIDENCE_TYPE_CHOICES,
+        default=TRL,
+        help_text="Type of readiness level (TRL or CRL)"
+    )
+    level = models.IntegerField(
+        default=1,
+        help_text="Readiness Level (1-9)",
+        choices=[(i, f'Level {i}') for i in range(1, 10)]
     )
     description = models.TextField(
-        help_text="Description of the evidence and what it demonstrates"
-    )
-    file = models.FileField(
-        upload_to='evidence/%Y/%m/',
-        help_text="Evidence file (PDF, image, video, etc.)",
         blank=True,
-        null=True
+        null=True,
+        help_text="Description of the evidence and what it demonstrates"
     )
     file_url = models.URLField(
         blank=True,
@@ -188,12 +199,12 @@ class Evidence(BaseModel):
         verbose_name_plural = 'Evidences'
         ordering = ['-created']
         indexes = [
-            models.Index(fields=['startup', 'trl_level']),
+            models.Index(fields=['startup', 'type', 'level']),
             models.Index(fields=['status']),
         ]
 
     def __str__(self):
-        return f"{self.startup.company_name} - TRL {self.trl_level} - {self.status}"
+        return f"{self.startup.company_name} - {self.type} {self.level} - {self.status}"
 
 
 class FinancialInput(BaseModel):
@@ -333,3 +344,65 @@ class InvestorPipeline(BaseModel):
 
     def __str__(self):
         return f"{self.startup.company_name} - {self.investor_name} ({self.stage})"
+
+
+class Round(BaseModel):
+    """
+    Represents a fundraising round for a startup.
+    These rounds might not have a specific investor tied to them initially,
+    and can be used to track general fundraising progress.
+    """
+    startup = models.ForeignKey(
+        Startup,
+        on_delete=models.CASCADE,
+        related_name='rounds',
+        help_text="Startup that owns this fundraising round"
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Name of the fundraising round (e.g., 'Seed', 'Series A')"
+    )
+    target_amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text="Target amount to raise for this round (USD)"
+    )
+    raised_amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0.00,
+        help_text="Amount already raised for this round (USD)"
+    )
+    is_open = models.BooleanField(
+        default=True,
+        help_text="Indicates if the fundraising round is currently open"
+    )
+    start_date = models.DateField(
+        blank=True,
+        null=True,
+        help_text="Date when the round officially started"
+    )
+    end_date = models.DateField(
+        blank=True,
+        null=True,
+        help_text="Date when the round is expected to close or closed"
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Additional notes about this fundraising round"
+    )
+
+    class Meta:
+        verbose_name = 'Round'
+        verbose_name_plural = 'Rounds'
+        ordering = ['-start_date', '-created']
+        unique_together = [['startup', 'name']]
+        indexes = [
+            models.Index(fields=['startup', 'is_open']),
+        ]
+
+    def __str__(self):
+        return f"{self.startup.company_name} - {self.name} Round"

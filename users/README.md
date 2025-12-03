@@ -130,6 +130,17 @@ The user type is stored in the `Profile` model and must be specified during regi
 | `/onboarding/startup/` | GET | Get startup information and onboarding status | Yes (startup only) |
 | `/onboarding/startup/` | POST | Complete startup onboarding | Yes (startup only) |
 
+### Startup Rounds
+
+| URL | Method | Description | Auth Required |
+|-----|--------|-------------|---------------|
+| `/startup/rounds/` | GET | List all fundraising rounds for the authenticated startup | Yes (startup only) |
+| `/startup/rounds/` | POST | Create a new fundraising round for the authenticated startup | Yes (startup only) |
+| `/startup/rounds/<int:pk>/` | GET | Retrieve a specific fundraising round by ID | Yes (startup only) |
+| `/startup/rounds/<int:pk>/` | PUT | Update a specific fundraising round by ID | Yes (startup only) |
+| `/startup/rounds/<int:pk>/` | PATCH | Partially update a specific fundraising round by ID | Yes (startup only) |
+| `/startup/rounds/<int:pk>/` | DELETE | Delete a specific fundraising round by ID | Yes (startup only) |
+
 ## API Request/Response Examples
 
 ### POST `/auth/registration/` - Register

@@ -16,14 +16,17 @@ from django.db.models import Model
 from django.contrib.auth import get_user_model
 
 from users.cache_keys import RESEND_VERIFICATION_TOKEN_CACHE_KEY
-from users.models import Startup, Profile, Evidence, FinancialInput, InvestorPipeline
-from users.serializers.startup import StartupOnboardingSerializer, StartupSerializer
+from users.models import Startup, Profile, Evidence, FinancialInput, InvestorPipeline, Round
+from users.serializers.startup import StartupOnboardingSerializer, StartupSerializer, RoundSerializer
 from users.serializers.onboarding import (
     OnboardingWizardSerializer,
     EvidenceSerializer,
     FinancialInputSerializer,
     InvestorPipelineSerializer
 )
+
+from rest_framework import viewsets # Import viewsets
+
 
 logger = logging.getLogger(__name__)
 
@@ -344,35 +347,63 @@ class StartupDataView(APIView):
             )
 
 
-class EvidenceListView(APIView):
+class EvidenceViewSet(viewsets.ModelViewSet):
     """
-    Get all evidences for the authenticated startup user.
+    API endpoint that allows evidences to be viewed, created, updated, or deleted.
+    Only allows access to evidences associated with the authenticated user's startup.
     """
+    serializer_class = EvidenceSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request: Request):
-        try:
-            profile = request.user.profile
-            if profile.user_type != Profile.STARTUP:
-                return Response(
-                    {'detail': _('This endpoint is only for startup users.')},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+    def get_queryset(self):
+        """
+        This view should return a list of all the evidences
+        for the currently authenticated user's startup.
+        """
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'profile') and hasattr(user.profile, 'startup'):
+            return Evidence.objects.filter(startup=user.profile.startup).order_by('level')
+        return Evidence.objects.none()
 
-            startup = Startup.objects.filter(profile=profile).first()
-            if not startup:
-                return Response([], status=status.HTTP_200_OK)
+    def perform_create(self, serializer):
+        """
+        Automatically associates the new evidence with the authenticated user's startup.
+        """
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'profile') and hasattr(user.profile, 'startup'):
+            startup = user.profile.startup
+            instance = serializer.save(startup=startup)
+            self._update_startup_trl_crl(startup)
+            return instance
+        raise Http404("Startup profile not found for the authenticated user.")
 
-            evidences = Evidence.objects.filter(startup=startup).order_by('-created')
-            serializer = EvidenceSerializer(evidences, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+    def perform_update(self, serializer):
+        """
+        Updates the evidence and recalculates startup's TRL/CRL.
+        """
+        instance = serializer.save()
+        self._update_startup_trl_crl(instance.startup)
+        return instance
 
-        except Exception as e:
-            logger.error(f"Error fetching evidences for {request.user.email}: {str(e)}", exc_info=True)
-            return Response(
-                {'detail': _('An error occurred while fetching evidences.')},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+    def perform_destroy(self, instance):
+        """
+        Deletes the evidence and recalculates startup's TRL/CRL.
+        """
+        startup = instance.startup
+        instance.delete()
+        self._update_startup_trl_crl(startup)
+
+    def _update_startup_trl_crl(self, startup: Startup):
+        """
+        Helper method placeholder for future TRL/CRL updates.
+
+        Note: current_trl and current_crl are calculated dynamically
+        in the StartupSerializer based on APPROVED evidences.
+        No database fields to update.
+        """
+        # TRL/CRL are calculated fields in the serializer, not stored in DB
+        pass
+
 
 
 class FinancialDataListView(APIView):
@@ -435,3 +466,32 @@ class InvestorPipelineListView(APIView):
                 {'detail': _('An error occurred while fetching investor pipeline.')},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class RoundViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows fundraising rounds to be viewed or edited.
+    Only allows access to rounds associated with the authenticated user's startup.
+    """
+    serializer_class = RoundSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        This view should return a list of all the rounds
+        for the currently authenticated user's startup.
+        """
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'profile') and hasattr(user.profile, 'startup'):
+            return Round.objects.filter(startup=user.profile.startup).order_by('-start_date')
+        return Round.objects.none()
+
+    def perform_create(self, serializer):
+        """
+        Automatically associates the new round with the authenticated user's startup.
+        """
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'profile') and hasattr(user.profile, 'startup'):
+            serializer.save(startup=user.profile.startup)
+        else:
+            raise Http404("Startup profile not found for the authenticated user.")

@@ -5,38 +5,43 @@ Complete nested serializer for multi-step onboarding form
 from rest_framework import serializers
 from django.db import transaction
 from users.models import Evidence, FinancialInput, InvestorPipeline, Startup
+from campaigns.models import Campaign, CampaignFinancials
 
 
 class EvidenceSerializer(serializers.ModelSerializer):
-    """Serializer for Evidence data in onboarding wizard"""
+    """
+    Serializer for Evidence data in onboarding wizard.
+
+    Each evidence is EITHER TRL OR CRL, not both.
+    Uses evidence_type and level fields (new structure).
+    """
 
     class Meta:
         model = Evidence
         fields = (
             'id',
-            'trl_level',
+            'type',
+            'level',
             'description',
-            'file',
             'file_url',
             'status',
+            'reviewer_notes',
             'created',
+            'updated',
         )
-        read_only_fields = ('id', 'status', 'created')
+        read_only_fields = ('id', 'status', 'created', 'updated')
 
-    def validate_trl_level(self, value):
-        """Validate TRL level is between 1 and 9"""
-        if value < 1 or value > 9:
-            raise serializers.ValidationError("TRL level must be between 1 and 9")
+    def validate_type(self, value):
+        """Validate evidence type is TRL or CRL"""
+        if value not in ['TRL', 'CRL']:
+            raise serializers.ValidationError("Evidence type must be 'TRL' or 'CRL'")
         return value
 
-    def validate(self, data):
-        """Validate that at least one file source is provided"""
-        if not data.get('file') and not data.get('file_url'):
-            raise serializers.ValidationError({
-                'file': 'Either file upload or file_url must be provided'
-            })
-        return data
-
+    def validate_level(self, value):
+        """Validate level is between 1 and 9"""
+        if value < 1 or value > 9:
+            raise serializers.ValidationError("Level must be between 1 and 9")
+        return value
 
 class FinancialInputSerializer(serializers.ModelSerializer):
     """Serializer for Financial Input data in onboarding wizard"""
@@ -180,10 +185,21 @@ class OnboardingWizardSerializer(serializers.Serializer):
         max_value=9,
         help_text="Current Technology Readiness Level (1-9)"
     )
+    current_crl = serializers.IntegerField(
+        min_value=1,
+        max_value=9,
+        required=False,
+        allow_null=True,
+        help_text="Current Commercial Readiness Level (1-9)"
+    )
     evidences = EvidenceSerializer(many=True, required=True)
 
     # Step 2: Financial Data
     financial_data = FinancialInputSerializer(many=True, required=True)
+    financial_projections = serializers.JSONField(
+        required=True,
+        help_text="Quarterly financial projections (revenue, COGS, OPEX)"
+    )
 
     # Step 3: Investors
     target_funding_amount = serializers.DecimalField(
@@ -195,11 +211,7 @@ class OnboardingWizardSerializer(serializers.Serializer):
     investors = InvestorPipelineSerializer(many=True, required=True)
 
     def validate_evidences(self, value):
-        """Validate that at least one evidence is provided"""
-        if not value or len(value) == 0:
-            raise serializers.ValidationError(
-                "At least one evidence document must be provided"
-            )
+        """Allow evidences to be optional. Other validations will apply if evidences are provided."""
         return value
 
     def validate_financial_data(self, value):
@@ -227,20 +239,50 @@ class OnboardingWizardSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        """Cross-field validation"""
-        # Validate that current_trl matches at least one evidence
+        """
+        Cross-field validation for TRL/CRL evidences.
+
+        Rules:
+        - At least one TRL evidence matching current_trl
+        - If current_crl provided, at least one CRL evidence matching it
+        """
         current_trl = data.get('current_trl')
+        current_crl = data.get('current_crl')
         evidences = data.get('evidences', [])
 
-        has_matching_evidence = any(
-            evidence.get('trl_level') == current_trl
-            for evidence in evidences
-        )
+        # Separate evidences by type
+        trl_evidences = [e for e in evidences if e.get('type') == 'TRL']
+        crl_evidences = [e for e in evidences if e.get('type') == 'CRL']
 
-        if not has_matching_evidence:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Validation: current_trl={current_trl}, current_crl={current_crl}")
+        logger.debug(f"Validation: evidences={evidences}")
+        logger.debug(f"Validation: trl_evidences={trl_evidences}")
+
+        # Validate TRL evidence exists for current_trl
+        has_matching_trl = any(
+            evidence.get('level') <= current_trl
+            for evidence in trl_evidences
+        )
+        logger.debug(f"Validation: has_matching_trl={has_matching_trl}")
+
+        if not has_matching_trl:
             raise serializers.ValidationError({
-                'evidences': f'At least one evidence must be provided for your current TRL level ({current_trl})'
+                'evidences': f'At least one TRL evidence must be provided for your current TRL level ({current_trl})'
             })
+
+        # Validate CRL evidence if current_crl is provided
+        if current_crl is not None:
+            has_matching_crl = any(
+                evidence.get('level') <= current_crl
+                for evidence in crl_evidences
+            )
+
+            if not has_matching_crl:
+                raise serializers.ValidationError({
+                    'evidences': f'At least one CRL evidence must be provided for your current CRL level ({current_crl})'
+                })
 
         return data
 
@@ -265,7 +307,11 @@ class OnboardingWizardSerializer(serializers.Serializer):
         financial_data = validated_data.pop('financial_data')
         investors_data = validated_data.pop('investors')
         current_trl = validated_data.pop('current_trl')
+        current_crl = validated_data.pop('current_crl', None)
         target_funding_amount = validated_data.pop('target_funding_amount')
+
+        # Extract financial_projections separately, as it belongs to CampaignFinancials
+        financial_projections_data = validated_data.pop('financial_projections')
 
         # =====================================================================
         # STEP 1: DELETE ALL MOCK DATA
@@ -314,12 +360,25 @@ class OnboardingWizardSerializer(serializers.Serializer):
         startup.industry = industry
         startup.is_mock_data = False
         startup.onboarding_completed = True  # MARK ONBOARDING AS COMPLETE
-        startup.save(update_fields=['company_name', 'industry', 'is_mock_data', 'onboarding_completed', 'updated'])
+        startup.save(update_fields=[
+            'company_name',
+            'industry',
+            'is_mock_data',
+            'onboarding_completed',
+            'updated'
+        ])
+
+        # Retrieve or create Campaign and CampaignFinancials
+        campaign, created = Campaign.objects.get_or_create(startup=startup)
+        campaign_financials, created = CampaignFinancials.objects.get_or_create(campaign=campaign)
+        campaign_financials.financial_projections = financial_projections_data
+        campaign_financials.save(update_fields=['financial_projections'])
 
         # Return aggregated data
         return {
             'startup': startup,
             'current_trl': current_trl,
+            'current_crl': current_crl,
             'target_funding_amount': target_funding_amount,
             'evidences': created_evidences,
             'financial_data': created_financial_inputs,
@@ -328,7 +387,7 @@ class OnboardingWizardSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         """Custom representation for the created data"""
-        return {
+        result = {
             'detail': 'Onboarding wizard completed successfully',
             'startup_id': instance['startup'].id,
             'is_mock_data': instance['startup'].is_mock_data,
@@ -338,3 +397,9 @@ class OnboardingWizardSerializer(serializers.Serializer):
             'financial_periods_count': len(instance['financial_data']),
             'investors_count': len(instance['investors']),
         }
+
+        # Add current_crl if it exists
+        if instance.get('current_crl') is not None:
+            result['current_crl'] = instance['current_crl']
+
+        return result

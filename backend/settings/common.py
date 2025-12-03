@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     # Internal apps
     'core',
     'users',
+    'campaigns',
 
     'drf_spectacular',
     'django_filters',
