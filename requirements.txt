@@ -103,4 +103,4 @@ django-ipware==7.0.1
 python-ipware==3.0.0
 fuzzywuzzy==0.18.0
 qrcode==8.2
-whitenoise==6.9.0
+whitenoise==6.9.0drf_writable_nested
