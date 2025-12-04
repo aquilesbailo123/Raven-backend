@@ -343,7 +343,6 @@ class RegisterSerializer(BaseRegisterSerializer):
                     profile=profile,
                     company_name='',  # Will be filled in onboarding wizard
                     industry='',  # Will be filled in onboarding wizard
-                    is_mock_data=False,  # No mock data for real users
                     onboarding_completed=False  # Must complete wizard
                 )
                 logger.info(f"Created empty Startup record for user {user.email}")

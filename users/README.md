@@ -54,7 +54,7 @@ users/
   - `company_name`: Company name
   - `industry`: Industry classification
   - `logo_url`: URL to company logo in Google Cloud Storage
-  - `is_mock_data`: Indicates if this is sample/mock data
+
 - **LoginHistory**: Records login attempts with context information
 
 ### Authentication Flow
@@ -257,7 +257,6 @@ Authorization: Bearer <access_token>
     "company_name": "My Startup Inc.",
     "industry": "saas",
     "logo_url": null,
-    "is_mock_data": true,
     "created": "2025-11-29T12:00:00Z",
     "updated": "2025-11-29T12:00:00Z"
   },
@@ -295,7 +294,6 @@ Authorization: Bearer <access_token>
     "company_name": "My Startup Inc.",
     "industry": "saas",
     "logo_url": null,
-    "is_mock_data": true,
     "created": "2025-11-29T12:00:00Z",
     "updated": "2025-11-29T12:00:00Z"
   },

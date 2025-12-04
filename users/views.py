@@ -16,7 +16,7 @@ from django.db.models import Model
 from django.contrib.auth import get_user_model
 
 from users.cache_keys import RESEND_VERIFICATION_TOKEN_CACHE_KEY
-from users.models import Startup, Profile, Evidence, FinancialInput, InvestorPipeline, Round
+from users.models import Startup, Profile, Evidence, FinancialInput, InvestorPipeline, Round, ReadinessLevel
 from users.serializers.startup import StartupOnboardingSerializer, StartupSerializer, RoundSerializer
 from users.serializers.onboarding import (
     OnboardingWizardSerializer,
@@ -199,7 +199,7 @@ class OnboardingCompleteView(APIView):
     - Financial projections
     - Investor pipeline
 
-    After successful completion, the startup's is_mock_data flag is set to False.
+
 
     **Authentication Required**: Yes
     **User Type**: Startup only
@@ -244,7 +244,7 @@ class OnboardingCompleteView(APIView):
         1. Validating all nested data
         2. Deleting existing mock data
         3. Creating real data from the wizard
-        4. Updating startup.is_mock_data to False
+
         """
         try:
             profile = request.user.profile
@@ -284,9 +284,8 @@ class OnboardingCompleteView(APIView):
             logger.info(
                 f"Onboarding wizard completed successfully for startup: "
                 f"{startup.company_name} (ID: {startup.id}). "
-                f"Created: {len(result['evidences'])} evidences, "
-                f"{len(result['financial_data'])} financial periods, "
-                f"{len(result['investors'])} investors"
+                f"Created: {len(result.get('evidences', []))} evidences, "
+                f"{len(result.get('incubator_ids', []))} incubator associations"
             )
 
             # Return success response with serialized data
@@ -335,6 +334,9 @@ class StartupDataView(APIView):
                     {'detail': _('Startup not found.')},
                     status=status.HTTP_404_NOT_FOUND
                 )
+
+            # Ensure TRL/CRL levels are up-to-date before serializing
+            startup.update_maturity_levels()
 
             serializer = StartupSerializer(startup)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -401,8 +403,10 @@ class EvidenceViewSet(viewsets.ModelViewSet):
         in the StartupSerializer based on APPROVED evidences.
         No database fields to update.
         """
-        # TRL/CRL are calculated fields in the serializer, not stored in DB
-        pass
+        """
+        Helper method to recalculate startup's TRL/CRL.
+        """
+        startup.update_maturity_levels()
 
 
 
@@ -495,3 +499,42 @@ class RoundViewSet(viewsets.ModelViewSet):
             serializer.save(startup=user.profile.startup)
         else:
             raise Http404("Startup profile not found for the authenticated user.")
+
+
+class ReadinessLevelViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing Readiness Levels (TRL/CRL metadata).
+    """
+    from users.serializers.readiness import ReadinessLevelSerializer
+    serializer_class = ReadinessLevelSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'profile') and hasattr(user.profile, 'startup'):
+            return ReadinessLevel.objects.filter(startup=user.profile.startup).order_by('type', 'level')
+        return ReadinessLevel.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'profile') and hasattr(user.profile, 'startup'):
+            serializer.save(startup=user.profile.startup)
+        else:
+            raise Http404("Startup profile not found for the authenticated user.")
+
+    def perform_destroy(self, instance):
+        """
+        Delete the ReadinessLevel and associated Evidence, then update startup levels.
+        """
+        startup = instance.startup
+        type_code = instance.type
+        level = instance.level
+        
+        # Delete associated evidence(s) for this level
+        Evidence.objects.filter(startup=startup, type=type_code, level=level).delete()
+        
+        # Delete the ReadinessLevel instance
+        instance.delete()
+        
+        # Recalculate startup levels
+        startup.update_maturity_levels()

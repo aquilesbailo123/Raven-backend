@@ -90,10 +90,21 @@ class Startup(BaseModel):
         null=True
     )
     logo_url = models.URLField(blank=True, null=True, help_text="URL to company logo in GCS")
-    is_mock_data = models.BooleanField(default=True, help_text="Indicates if this is mock/sample data")
+
     onboarding_completed = models.BooleanField(
         default=False,
         help_text="True when user completes the onboarding wizard"
+    )
+
+    TRL_level = models.IntegerField(
+        default=1,
+        help_text="Current Technology Readiness Level (1-9)",
+        choices=[(i, f'Level {i}') for i in range(1, 10)]
+    )
+    CRL_level = models.IntegerField(
+        default=1,
+        help_text="Current Commercial Readiness Level (1-9)",
+        choices=[(i, f'Level {i}') for i in range(1, 10)]
     )
 
     class Meta:
@@ -110,6 +121,186 @@ class Startup(BaseModel):
         """
         return self.onboarding_completed
 
+    def update_maturity_levels(self):
+        """
+        Updates TRL_level and CRL_level based on approved ReadinessLevels.
+        Logic: The current level is the highest *consecutive* level from 1 that has
+        at least one APPROVED evidence.
+        """
+        from .models import Evidence  # Avoid circular import
+
+        for type_code in ['TRL', 'CRL']:
+            current_level = 0
+            for i in range(1, 10):
+                # Check if there is at least one approved evidence for this level
+                has_approved_evidence = self.evidences.filter(
+                    type=type_code,
+                    level=i,
+                    status=Evidence.APPROVED
+                ).exists()
+
+                if has_approved_evidence:
+                    # If level 'i' is approved, update current_level and check the next one
+                    current_level = i
+                else:
+                    # If level 'i' is not approved, the consecutive chain is broken
+                    break
+            
+            # Update the corresponding field
+            if type_code == 'TRL':
+                self.TRL_level = current_level
+            else:
+                self.CRL_level = current_level
+        
+        self.save(update_fields=['TRL_level', 'CRL_level'])
+
+    # Relationship to Incubators
+    incubators = models.ManyToManyField(
+        'Incubator',
+        related_name='startups',
+        blank=True,
+        help_text="Incubators that this startup is associated with"
+    )
+
+
+class Incubator(BaseModel):
+    """
+    Incubator profile linked to a user.
+    """
+    profile = models.OneToOneField(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name='incubator',
+        limit_choices_to={'user_type': Profile.INCUBATOR}
+    )
+    name = models.CharField(max_length=255, help_text="Name of the Incubator")
+    profile_complete = models.BooleanField(
+        default=False,
+        help_text="True when incubator profile is complete"
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Description of the incubator thesis and focus"
+    )
+    logo_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="URL to incubator logo"
+    )
+
+    class Meta:
+        verbose_name = 'Incubator'
+        verbose_name_plural = 'Incubators'
+
+    def __str__(self):
+        return self.name
+
+
+class IncubatorMember(BaseModel):
+    """
+    Person associated with an Incubator (Investor, Mentor, or both).
+    """
+    INVESTOR = 'INVESTOR'
+    MENTOR = 'MENTOR'
+    BOTH = 'BOTH'
+
+    ROLE_CHOICES = [
+        (INVESTOR, 'Investor'),
+        (MENTOR, 'Mentor'),
+        (BOTH, 'Both'),
+    ]
+
+    incubator = models.ForeignKey(
+        Incubator,
+        on_delete=models.CASCADE,
+        related_name='members',
+        help_text="Incubator this person belongs to"
+    )
+    full_name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default=MENTOR,
+        help_text="Role of the person in the incubator"
+    )
+
+    class Meta:
+        verbose_name = 'Incubator Member'
+        verbose_name_plural = 'Incubator Members'
+
+    def __str__(self):
+        return f"{self.full_name} ({self.role}) - {self.incubator.name}"
+
+
+class Challenge(BaseModel):
+    """
+    Challenge launched by an Incubator.
+    """
+    OPEN = 'OPEN'
+    CONCLUDED = 'CONCLUDED'
+
+    STATUS_CHOICES = [
+        (OPEN, 'Open'),
+        (CONCLUDED, 'Concluded'),
+    ]
+
+    incubator = models.ForeignKey(
+        Incubator,
+        on_delete=models.CASCADE,
+        related_name='challenges',
+        help_text="Incubator that launched this challenge"
+    )
+    title = models.CharField(max_length=255)
+    subtitle = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField()
+    budget = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    deadline = models.DateField(blank=True, null=True)
+    required_technologies = models.TextField(help_text="Comma-separated list of technologies or description")
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=OPEN
+    )
+
+    class Meta:
+        verbose_name = 'Challenge'
+        verbose_name_plural = 'Challenges'
+
+    def __str__(self):
+        return f"{self.title} - {self.incubator.name}"
+
+    @property
+    def applicant_count(self):
+        return self.applications.count()
+
+
+class ChallengeApplication(BaseModel):
+    """
+    Application/Solution from a Startup to a Challenge.
+    """
+    challenge = models.ForeignKey(
+        Challenge,
+        on_delete=models.CASCADE,
+        related_name='applications'
+    )
+    startup = models.ForeignKey(
+        Startup,
+        on_delete=models.CASCADE,
+        related_name='challenge_applications'
+    )
+    text_solution = models.TextField(help_text="Text description of the solution")
+
+    class Meta:
+        verbose_name = 'Challenge Application'
+        verbose_name_plural = 'Challenge Applications'
+        unique_together = ['challenge', 'startup']
+
+    def __str__(self):
+        return f"Application by {self.startup.company_name} to {self.challenge.title}"
+
 
 class LoginHistory(UserMixinModel):
     """Tracks user login attempts with IP and user agent information"""
@@ -124,6 +315,59 @@ class LoginHistory(UserMixinModel):
 
     def __str__(self):
         return f"{self.user.email} - {self.ip} - {self.timestamp}"
+
+
+# =============================================================================
+# READINESS LEVEL MODELS
+# =============================================================================
+
+class ReadinessLevel(BaseModel):
+    """
+    Represents a specific TRL or CRL level for a startup.
+    Stores metadata (title, subtitle) and tracks the status based on evidence.
+    """
+    TRL = 'TRL'
+    CRL = 'CRL'
+    TYPE_CHOICES = [
+        (TRL, 'Technology Readiness Level'),
+        (CRL, 'Commercial Readiness Level'),
+    ]
+
+    startup = models.ForeignKey(
+        Startup,
+        on_delete=models.CASCADE,
+        related_name='readiness_levels',
+        help_text="Startup that owns this readiness level"
+    )
+    type = models.CharField(
+        max_length=10,
+        choices=TYPE_CHOICES,
+        default=TRL,
+        help_text="Type of readiness level (TRL or CRL)"
+    )
+    level = models.IntegerField(
+        help_text="Level number (1-9)",
+        choices=[(i, f'Level {i}') for i in range(1, 10)]
+    )
+    title = models.CharField(
+        max_length=255,
+        help_text="Title of this level (e.g., 'Proof of Concept')"
+    )
+    subtitle = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Subtitle or brief description"
+    )
+
+    class Meta:
+        verbose_name = 'Readiness Level'
+        verbose_name_plural = 'Readiness Levels'
+        unique_together = ['startup', 'type', 'level']
+        ordering = ['type', 'level']
+
+    def __str__(self):
+        return f"{self.startup.company_name} - {self.type} {self.level}"
 
 
 # =============================================================================
@@ -160,6 +404,14 @@ class Evidence(BaseModel):
         on_delete=models.CASCADE,
         related_name='evidences',
         help_text="Startup that owns this evidence"
+    )
+    readiness_level = models.ForeignKey(
+        'ReadinessLevel',
+        on_delete=models.CASCADE,
+        related_name='evidences',
+        null=True,
+        blank=True,
+        help_text="Specific readiness level definition this evidence supports"
     )
     type = models.CharField(
         max_length=10,
@@ -301,6 +553,14 @@ class InvestorPipeline(BaseModel):
         related_name='investor_pipeline',
         help_text="Startup that owns this investor relationship"
     )
+    round = models.ForeignKey(
+        'Round',
+        on_delete=models.SET_NULL,
+        related_name='investors',
+        blank=True,
+        null=True,
+        help_text="Fundraising round this investor is associated with"
+    )
     investor_name = models.CharField(
         max_length=255,
         help_text="Name of the investor or investment firm"
@@ -399,7 +659,7 @@ class Round(BaseModel):
         verbose_name = 'Round'
         verbose_name_plural = 'Rounds'
         ordering = ['-start_date', '-created']
-        unique_together = [['startup', 'name']]
+        # unique_together = [['startup', 'name']]
         indexes = [
             models.Index(fields=['startup', 'is_open']),
         ]

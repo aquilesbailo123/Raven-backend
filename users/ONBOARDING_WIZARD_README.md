@@ -40,7 +40,7 @@ Tracks investor relationships and fundraising pipeline.
   - Validates all nested data
   - Implements `@transaction.atomic` for data integrity
   - Deletes all mock data before creating real data
-  - Updates `startup.is_mock_data = False`
+
 
 ### 3. New View (users/views.py)
 
@@ -209,7 +209,7 @@ curl -X POST http://localhost:8000/api/users/startup/complete-onboarding/ \
 2. Complete all 3 steps with valid data
 3. Submit the form
 4. Verify redirect to dashboard
-5. Check that `is_mock_data = False` in Django admin
+
 
 ## Troubleshooting
 

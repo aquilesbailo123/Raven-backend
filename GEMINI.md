@@ -340,4 +340,4 @@ Brief description of what this app does.
 - Include examples for complex or non-obvious URL patterns
 
 ### MODEL.ml
-- Whatever change in model, views or serializers, update the model.ml file
+- Whatever change in model, views or serializers, update the MODEL.md file in `./MODEL.md`

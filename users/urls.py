@@ -12,9 +12,11 @@ from .views import (
     # EvidenceListView, # Removed
     FinancialDataListView,
     InvestorPipelineListView,
-    RoundViewSet,
+    # RoundViewSet, # Replaced by campaigns.views.RoundViewSet
     EvidenceViewSet, # Added EvidenceViewSet
+    ReadinessLevelViewSet,
 )
+from campaigns.views import RoundViewSet
 
 # NOTE if you replace reset-password/ with a custom view, this can be used as placeholder because dj_rest_auth needs this exact url to exist
 # class NullView(View):
@@ -23,6 +25,31 @@ from .views import (
 router = DefaultRouter()
 router.register(r'startup/rounds', RoundViewSet, basename='startup-round') # Registered RoundViewSet
 router.register(r'startup/evidences', EvidenceViewSet, basename='startup-evidence') # Registered EvidenceViewSet
+router.register(r'startup/readiness-levels', ReadinessLevelViewSet, basename='startup-readiness-level')
+
+from .views_incubator import (
+    IncubatorViewSet,
+    IncubatorMemberViewSet,
+    ChallengeViewSet,
+    ChallengeApplicationViewSet,
+    StartupIncubatorAssociationViewSet,
+    IncubatorOnboardingView,
+    IncubatorDataView,
+    IncubatorInvestmentViewSet,
+    PortfolioEvidenceViewSet,
+    PortfolioReadinessLevelViewSet,
+    PortfolioCampaignViewSet
+)
+
+router.register(r'incubators', IncubatorViewSet)
+router.register(r'incubator/members', IncubatorMemberViewSet, basename='incubator-member')
+router.register(r'challenges', ChallengeViewSet, basename='challenge')
+router.register(r'challenge-applications', ChallengeApplicationViewSet, basename='challenge-application')
+router.register(r'startup/associate-incubator', StartupIncubatorAssociationViewSet, basename='startup-incubator-associate')
+router.register(r'incubator/investments', IncubatorInvestmentViewSet, basename='incubator-investment')
+router.register(r'incubator/portfolio/evidences', PortfolioEvidenceViewSet, basename='portfolio-evidence')
+router.register(r'incubator/portfolio/readiness-levels', PortfolioReadinessLevelViewSet, basename='portfolio-readiness-level')
+router.register(r'incubator/portfolio/campaigns', PortfolioCampaignViewSet, basename='portfolio-campaign')
 
 urlpatterns = [
     path('auth/', include('dj_rest_auth.urls')),
@@ -31,6 +58,8 @@ urlpatterns = [
     path('resend-email-confirmation/', ResendEmailConfirmationView.as_view(), name='resend_email_confirmation'),
     path('reset-password/<str:uidb64>/<str:token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('onboarding/startup/', StartupOnboardingView.as_view(), name='startup_onboarding'),
+    path('incubator/complete-onboarding/', IncubatorOnboardingView.as_view(), name='incubator_complete_onboarding'),
+    path('incubator/data/', IncubatorDataView.as_view(), name='incubator_data'),
     path('startup/complete-onboarding/', OnboardingCompleteView.as_view(), name='complete_onboarding'),
 
     # Startup data endpoints
@@ -40,5 +69,6 @@ urlpatterns = [
     path('startup/investors/', InvestorPipelineListView.as_view(), name='investor_pipeline_list'),
 
     # Include router URLs for startup rounds and evidences
+    path('', include(router.urls)),
     path('', include(router.urls)),
 ]

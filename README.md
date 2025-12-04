@@ -58,6 +58,15 @@ Use the provided build script for deployment:
 ./build_scripts/render.sh
 ```
 
+## Management Scripts
+
+### Delete Non-Admin Users
+To delete all users except superusers and staff (useful for cleaning up test data):
+
+```bash
+python delete_non_admin_users.py
+```
+
 ## Extending the Project
 
 This template is designed to be extended. When adding new functionality:

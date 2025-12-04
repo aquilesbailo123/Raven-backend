@@ -56,6 +56,20 @@ class InvestmentRound(BaseModel):
     pre_money_valuation = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
     is_current = models.BooleanField(default=False, help_text="Is this the current round for the wizard?")
+    
+    # Date Fields
+    launch_date = models.DateField(null=True, blank=True, help_text="Date when the round officially opened")
+    target_close_date = models.DateField(null=True, blank=True, help_text="Target deadline communicated to investors")
+    actual_close_date = models.DateField(null=True, blank=True, help_text="Date when the round was actually closed")
+
+    def save(self, *args, **kwargs):
+        if self.is_current:
+            # Set all other rounds for this campaign to is_current=False
+            InvestmentRound.objects.filter(
+                campaign=self.campaign,
+                is_current=True
+            ).exclude(id=self.id).update(is_current=False)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} Round for {self.campaign.startup.company_name}"
@@ -67,8 +81,10 @@ class Investor(BaseModel):
     """
     class Status(models.TextChoices):
         CONTACTED = 'CONTACTED', 'Contacted'
-        MEETING = 'MEETING', 'Meeting'
+        PITCH_SENT = 'PITCH_SENT', 'Pitch Sent'
+        MEETING_SCHEDULED = 'MEETING_SCHEDULED', 'Meeting Scheduled'
         DUE_DILIGENCE = 'DUE_DILIGENCE', 'Due Diligence'
+        TERM_SHEET = 'TERM_SHEET', 'Term Sheet'
         COMMITTED = 'COMMITTED', 'Committed'
 
     round = models.ForeignKey(
@@ -76,13 +92,20 @@ class Investor(BaseModel):
         on_delete=models.CASCADE,
         related_name='investors'
     )
-    name = models.CharField(max_length=255)
-    email = models.EmailField()
+    incubator = models.ForeignKey(
+        'users.Incubator',
+        on_delete=models.CASCADE,
+        related_name='investments'
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.CONTACTED)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
 
+    class Meta:
+        # unique_together = ('round', 'incubator')
+        pass
+
     def __str__(self):
-        return f"{self.name} in {self.round.name}"
+        return f"{self.incubator.name} in {self.round.name}"
 
 
 class CampaignTeamMember(BaseModel):
@@ -181,3 +204,22 @@ class CampaignLegal(BaseModel):
 
     def __str__(self):
         return f"Legal docs for {self.campaign.startup.company_name}"
+
+
+class FinancialSheet(BaseModel):
+    """
+    Excel-like financial sheet for a campaign.
+    Stores custom metrics, formulas, and values in a structured JSON format.
+    """
+    campaign = models.OneToOneField(
+        Campaign,
+        on_delete=models.CASCADE,
+        related_name='financial_sheet'
+    )
+    sheet_data = models.JSONField(
+        default=dict,
+        help_text="Structure: { 'config': {...}, 'grid_rows': [...] }"
+    )
+
+    def __str__(self):
+        return f"Financial Sheet for {self.campaign.startup.company_name}"
