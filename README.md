@@ -1,45 +1,147 @@
 <div align="center">
-  <img src="static/images/chadicon.svg" alt="Daddy Django Logo" width="120" height="120">
+  <h1>🦅 Raven CRM</h1>
 </div>
 
-# Daddy Django
+# Raven CRM
 
-A comprehensive Django template designed for building scalable and secure backend applications.
+A comprehensive Customer Relationship Management system designed for startup incubators and accelerators to manage their portfolio, track progress, and facilitate growth.
 
 ## Overview
 
-Daddy Django is a robust Django project template that provides a solid foundation for building production-ready backend applications. It includes a comprehensive authentication system, modular settings, and follows Django best practices.
+Raven CRM is a dual-view platform that serves both startups and incubators, providing a complete ecosystem for managing the incubation pipeline, tracking technology and commercial readiness levels, financial analysis, investor relations, challenges, and mentoring programs.
 
-## Key Features
+## Two Main Views
 
-- **Modular Settings**: Split configuration into specialized modules for different aspects
-- **Comprehensive Authentication**: Secure user authentication with dj-rest-auth and allauth ([see AUTH_ENDPOINTS.md](AUTH_ENDPOINTS.md))
-- **Security Features**: OTP for admin, IP tracking, action freezing, captcha integration
-- **REST API Ready**: Set up with Django REST framework and appropriate serializers
-- **Background Processing**: Celery integration for asynchronous tasks
-- **Caching**: Redis-based caching infrastructure
-- **Email Templates**: Professional email templates with modern design
-- **Internationalization**: Support for multiple languages
+### 🚀 Startup View
+Designed for individual startups to manage their own progress, track milestones, and engage with incubator resources.
+
+### 🏢 Incubator View
+Comprehensive dashboard for incubators to manage their entire portfolio, track multiple startups, and oversee the incubation process at scale.
+
+## Key Modules
+
+### 🔐 Dual Authentication
+- **Startup Login**: Rocket icon (blue theme) with professional animations and gradients
+  - Create account
+  - Password recovery
+  - Modern UI with smooth transitions
+- **Incubator Login**: Building icon (purple theme) with professional animations and gradients
+  - Create account
+  - Password recovery
+  - Branded experience
+
+### 📊 Incubation Pipeline
+- **Startup View**: 
+  - Individual progress dashboard
+  - Kanban board with 4 stages: Pre-incubación, Incubación, Aceleración, Exit
+  - Card view (grid/list toggle)
+  - Drag & drop functionality
+  - Key information display: logo, founders, revenue, progress indicators
+- **Incubator View**:
+  - Portfolio-wide pipeline management
+  - Multi-startup tracking
+  - Consolidated progress views
+
+### 📈 TRL/CRL (Technology Readiness Level / Commercial Readiness Level)
+- **Startup View**:
+  - Personal logbook/bitácora
+  - 9 levels for both TRL and CRL
+  - Visual state indicators
+  - Evidence uploads and gallery
+  - Tab navigation between TRL and CRL
+  - Progress indicators
+- **Incubator View**:
+  - View logbooks for all managed startups
+  - Access to all evidence and uploads
+  - Tab navigation and progress tracking across portfolio
+  - Consolidated reporting
+
+### 💰 Finanzas (Finance)
+- **Startup View**:
+  - Company-specific KPIs and charts
+  - Viability indicators: profit, EBITDA, NPV, IRR, ROE
+  - Financial projections
+  - Sensitivity analysis
+  - Cash flow tables
+  - Export to Excel/CSV
+- **Incubator View**:
+  - Portfolio-wide KPIs
+  - Consolidated view and export by startup
+  - Portfolio-level exports
+  - Aggregated statistical projections
+
+### 💼 Inversores (Investors)
+- **Startup View**:
+  - List and manage investors
+  - Visualize investment status/tickets
+  - Track funding rounds (pre-seed, seed, Series A, donations)
+  - KuskaPay integration
+  - Crowdfunding CTA
+- **Incubator View**:
+  - View and manage investors accepted by startups
+  - Track rounds and global participation
+  - KuskaPay integration at portfolio level
+  - Consolidated investor management
+
+### 🎯 Desafíos (Challenges - Open Window)
+- **Startup View**:
+  - Browse and apply to business challenges
+  - Track application status
+  - Chat with matched companies
+- **Incubator View**:
+  - Manage and review all received challenges
+  - Administer participating startups
+  - Match startups with challenges
+
+### 👥 Mentoring
+- **Startup View**:
+  - Directory of registered mentors
+  - Filter and schedule sessions
+  - Rating and feedback system
+  - Personal notes and history
+- **Incubator View**:
+  - Extended directory for entire network
+  - Track progress and sessions of mentored startups
+  - Mentor notes and feedback
+  - Network-wide mentoring analytics
+
+### 🎨 Transversal Elements
+- **UI/UX Components**:
+  - Fixed sidebar with role-based navigation
+  - Header with search, notifications, and avatar
+  - Color palette: Blue theme for startups, Purple theme for incubators
+  - Stage-based status indicators
+  - Modern typography and components
+  - Fully responsive design
+  - Loading states and empty states
+  - Accessible design patterns
 
 ## Project Structure
 
 ```
-daddy-django/
+raven-crm/
 ├── backend/               # Main Django configuration
 │   ├── settings/          # Modular settings files
 │   └── ...
 ├── build_scripts/         # Deployment scripts
 ├── core/                  # Core functionality and shared components
-├── users/                 # User management and authentication
-├── utils/                 # Utility functions and helpers
-└── static/                # Static files
+├── users/                 # User management and dual authentication
+├── startups/              # Startup management module
+├── incubators/            # Incubator management module
+├── pipeline/              # Incubation pipeline module
+├── trl_crl/              # TRL/CRL tracking module
+├── finanzas/             # Finance module
+├── inversores/           # Investors module
+├── desafios/             # Challenges module
+├── mentoring/            # Mentoring module
+├── utils/                # Utility functions and helpers
+└── static/               # Static files
 ```
 
-## Apps
+## Prototype
 
-- **core**: Houses shared templates, templatetags, and base functionality
-- **users**: Comprehensive authentication system with profile management
-- **utils**: Reusable functions and helpers across the project
+For a detailed review of the proposed prototype, visit:
+[Figma Prototype - Raven CRM](https://www.figma.com/make/MlvuxcvTJIhXJaYlCXEdb2/Raven-CRM?t=Q7cDcHqcxnurKZU5&fullscreen=1)
 
 ## Getting Started
 
@@ -69,7 +171,7 @@ python delete_non_admin_users.py
 
 ## Extending the Project
 
-This template is designed to be extended. When adding new functionality:
+This CRM is designed to be extended. When adding new functionality:
 
 1. Create a new Django app if needed: `python manage.py startapp app_name`
 2. Follow the established patterns for models, views, and serializers
