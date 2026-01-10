@@ -8,6 +8,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite default port
     "http://127.0.0.1:5173",
     f"https://{env('FRONTEND_DOMAIN', default='localhost:3000')}",
+    "https://raven-frontend.vercel.app/",
+    "https://www.raven-frontend.vercel.app/",
     f"https://{env('DOMAIN', default='localhost')}",
 ]
 
